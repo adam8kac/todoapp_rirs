@@ -25,6 +25,9 @@ jobs:
           --health-timeout=5s
           --health-retries=30
           --health-start-period=5s
+    defaults:
+      run:
+        working-directory: backend
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -33,7 +36,7 @@ jobs:
         with:
           python-version: '3.12'
       - name: Install dependencies
-        run: pip install -r backend/requirements.txt
+        run: pip install -r requirements.txt
       - name: Run tests
         run: python manage.py test
       - name: Run migrations
@@ -42,6 +45,9 @@ jobs:
   frontend:
     name: spredni konec
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
     steps:
       - name: checkout code
         uses: actions/checkout@v4
