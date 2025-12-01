@@ -6,15 +6,6 @@ on:
   pull_request:
     branches: [main, production, pre-production]
 
-env:
-  POSTGRES_DB: ${{ secrets.POSTGRES_DB }}
-  POSTGRES_USER: ${{ secrets.POSTGRES_USER }}
-  POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
-  PG_HOST: localhost
-  PG_PORT: 5432
-  DJANGO_SECRET_KEY: ${{secrets.DJANGO_SECRET_KEY}}
-  DJANGO_DEBUG: 1
-  
 jobs:
   backend:
     name: zadnji konec
@@ -34,6 +25,14 @@ jobs:
           --health-timeout=5s
           --health-retries=30
           --health-start-period=5s
+    env:
+      POSTGRES_DB: ${{ secrets.POSTGRES_DB }}
+      POSTGRES_USER: ${{ secrets.POSTGRES_USER }}
+      POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
+      PG_HOST: localhost
+      PG_PORT: 5432
+      DJANGO_SECRET_KEY: ${{secrets.DJANGO_SECRET_KEY}}
+      DJANGO_DEBUG: 1
     defaults:
       run:
         working-directory: backend
