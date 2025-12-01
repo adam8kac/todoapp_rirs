@@ -1,0 +1,57 @@
+name: Delovni tok
+
+on:
+  push:
+    branches: [main, production, pre-production]
+  pull_request:
+    branches: [main, production, pre-production]
+
+jobs:
+  backend:
+    name: zadnji konec
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: $({secrets.PG_DB_NAME})
+          POSTGRES_USER: $({secrets.PG_USER})
+          POSTGRES_PASSWORD: $({secrets.PG_PASSWORD})
+        ports:
+          - '5432:5432'
+        healthcheck:
+          test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}']
+          interval: 2s
+          timeout: 3s
+          retries: 30
+          start_period: 5s
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Python install
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.12'
+      - name: Install dependencies
+        run: pip install -r backend/requirements.txt
+      - name: Run tests
+        run: python manage.py test
+      - name: Run migrations
+        run: python manage.py migrate --noinput
+
+  frontend:
+    name: spredni konec
+    runs-on: ubuntu-latest
+    steps:
+      - name: checkout code
+        uses: actions/checkout@v4
+      - name: setup node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: install dependencies
+        run: npm ci
+      - name: run tests
+        run: npm run test
+      - name: build
+        run: npm run build
