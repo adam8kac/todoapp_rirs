@@ -14,9 +14,9 @@ jobs:
       postgres:
         image: postgres:16
         env:
-          POSTGRES_DB: $({secrets.PG_DB_NAME})
-          POSTGRES_USER: $({secrets.PG_USER})
-          POSTGRES_PASSWORD: $({secrets.PG_PASSWORD})
+          POSTGRES_DB: ${{ secrets.PG_DB_NAME }}
+          POSTGRES_USER: ${{ secrets.PG_USER }}
+          POSTGRES_PASSWORD: ${{ secrets.PG_PASSWORD }}   
         ports:
           - '5432:5432'
         healthcheck:
