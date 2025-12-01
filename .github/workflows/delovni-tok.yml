@@ -7,6 +7,15 @@ on:
     branches: [main, production, pre-production]
 
 jobs:
+  env:
+    PG_DB_NAME: ${{ secrets.PG_DB_NAME }}
+    PG_USER: ${{ secrets.PG_USER }}
+    PG_PASSWORD: ${{ secrets.PG_PASSWORD }}
+    PG_HOST: localhost
+    PG_PORT: 5432
+    DJANGO_SECRET_KEY: ${{secrets.DJANGO_SECRET_KEY}}
+    DJANGO_DEBUG: 1
+
   backend:
     name: zadnji konec
     runs-on: ubuntu-latest
