@@ -1,73 +1,72 @@
-name: Delovni tok
+name: rirs-ci
 
 on:
   push:
-    branches: [main, production, pre-production]
+    branches: [ main, pre-production, production ]
   pull_request:
-    branches: [main, production, pre-production]
+    branches: [ main, pre-production, production ]
 
 jobs:
   backend:
-    name: zadnji konec
+    name: Backend (Django)
     runs-on: ubuntu-latest
     services:
       postgres:
         image: postgres:16
         env:
-          POSTGRES_DB: ${{ secrets.POSTGRES_DB }}
+          POSTGRES_DB: ${{ secrets.PG_DB_NAME }}
           POSTGRES_USER: ${{ secrets.PG_USER }}
           POSTGRES_PASSWORD: ${{ secrets.PG_PASSWORD }}
         ports:
-          - '5432:5432'
+          - 5432:5432
         options: >-
-          --health-cmd="pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"
+          --health-cmd="pg_isready -U ${PG_USER} -d ${PG_DB_NAME}"
           --health-interval=10s
           --health-timeout=5s
-          --health-retries=30
-          --health-start-period=5s
+          --health-retries=5
     env:
-      POSTGRES_DB: ${{ secrets.POSTGRES_DB }}
-      POSTGRES_USER: ${{ secrets.POSTGRES_USER }}
-      POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
+      PG_DB_NAME: ${{ secrets.PG_DB_NAME }}
+      PG_USER: ${{ secrets.PG_USER }}
+      PG_PASSWORD: ${{ secrets.PG_PASSWORD }}
       PG_HOST: localhost
       PG_PORT: 5432
-      DJANGO_SECRET_KEY: ${{secrets.DJANGO_SECRET_KEY}}
-      DJANGO_DEBUG: 1
+      DJANGO_SECRET_KEY: ${{ secrets.DJANGO_SECRET_KEY }}
+      DJANGO_DEBUG: "${{ secrets.DJANGO_DEBUG }}"
     defaults:
       run:
         working-directory: backend
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-      - name: Python install
-        uses: actions/setup-python@v4
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
         with:
-          python-version: '3.12'
+          python-version: "3.12"
       - name: Install dependencies
-        run: pip install -r requirements.txt
-      - name: Run tests
-        run: python manage.py test
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
       - name: Run migrations
         run: python manage.py migrate --noinput
+      - name: Run tests
+        run: python manage.py test -v 2
 
   frontend:
-    name: spredni konec
+    name: Frontend (React/Vite)
     runs-on: ubuntu-latest
     defaults:
       run:
         working-directory: frontend
+    env:
+      VITE_API_BASE: ${{ secrets.VITE_API_BASE }}
     steps:
-      - name: checkout code
-        uses: actions/checkout@v4
-      - name: setup node
-        uses: actions/setup-node@v4
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
         with:
-          node-version: '20'
-          cache: 'npm'
+          node-version: "20"
+          cache: npm
           cache-dependency-path: frontend/package-lock.json
-      - name: install dependencies
+      - name: Install dependencies
         run: npm ci
-      - name: run tests
-        run: npm run test
-      - name: build
+      - name: Test
+        run: npm test
+      - name: Build
         run: npm run build
