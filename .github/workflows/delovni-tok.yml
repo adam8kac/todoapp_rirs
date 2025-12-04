@@ -54,7 +54,7 @@ jobs:
       - name: Upload coverage
         uses: actions/upload-artifact@v4
         with:
-          name: coverage
+          name: backend-coverage
           path: backend/coverage
       - name: Run migrations
         run: python manage.py migrate --noinput
