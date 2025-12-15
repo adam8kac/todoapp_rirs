@@ -10,6 +10,7 @@ jobs:
   backend:
     name: zadnji konec
     runs-on: ubuntu-latest
+
     services:
       postgres:
         image: postgres:16
@@ -39,36 +40,41 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+
       - name: Python install
         uses: actions/setup-python@v4
         with:
           python-version: '3.12'
+
       - name: Cache python packages
         uses: actions/cache@v4
         with:
           path: ~/.cache/pip
           key: pip-${{ runner.os }}-${{ hashFiles('backend/requirements.txt') }}
           restore-keys: pip-${{ runner.os }}-
+
       - name: Install dependencies
         run: pip install -r requirements.txt
-      - name: Build backend
-        run: python manage.py collectstatic --noinput
+
       - name: Uplaod build artifacts
         uses: actions/upload-artifact@v4
         with:
           name: backend-build
           path: backend/build
+
       - name: Run tests with coverage
         run: |
           python -m coverage run manage.py test -v 2
           mkdir -p coverage
           python -m coverage xml -o coverage/coverage.xml
           python -m coverage html -d coverage/html
+
       - name: Upload coverage
         uses: actions/upload-artifact@v4
         with:
           name: backend-coverage
           path: backend/coverage
+
       - name: Run migrations
         run: python manage.py migrate --noinput
 
@@ -82,31 +88,38 @@ jobs:
     steps:
       - name: checkout code
         uses: actions/checkout@v4
+
       - name: setup node
         uses: actions/setup-node@v4
         with:
           node-version: '20'
           # cache: 'npm' # to je isto kot pa step name: Cache npm packages
           # cache-dependency-path: frontend/package-lock.json
+
       - name: Cache npm packages
         uses: actions/cache@v4
         with:
           path: ~/.npm
           key: npm-${{ runner.os }}-${{ hashFiles('frontend/package-lock.json') }}
           restore-keys: npm-${{ runner.os }}-
+
       - name: install dependencies
         run: npm ci
+
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
           name: frontend-build
           path: frontend/dist
+
       - name: run tests with coverage
         run: npm run test:coverage
+
       - name: Upload coverage
         uses: actions/upload-artifact@v4
         with:
           name: frontend-coverage
           path: frontend/coverage
+          
       - name: build
         run: npm run build
