@@ -50,7 +50,7 @@ jobs:
           key: pip-${{ runner.os }}-${{ hashFiles('backend/requirements.txt') }}
           restore-keys: pip-${{ runner.os }}-
       - name: Install dependencies
-        run: pip install -r backend/requirements.txt
+        run: pip install -r requirements.txt
       - name: Build backend
         run: python manage.py collectstatic --noinput
       - name: Uplaod build artifacts
