@@ -43,8 +43,21 @@ jobs:
         uses: actions/setup-python@v4
         with:
           python-version: '3.12'
+      - name: Cache python packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: pip-${{ runner.os }}-${{ hashFiles('backend/requirements.txt') }}
+          restore-keys: pip-${{ runner.os }}-
       - name: Install dependencies
-        run: pip install -r requirements.txt
+        run: pip install -r backend/requirements.txt
+      - name: Build backend
+        run: python manage.py collectstatic --noinput
+      - name: Uplaod build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-build
+          path: backend/build
       - name: Run tests with coverage
         run: |
           python -m coverage run manage.py test -v 2
@@ -73,10 +86,21 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '20'
-          cache: 'npm'
-          cache-dependency-path: frontend/package-lock.json
+          # cache: 'npm' # to je isto kot pa step name: Cache npm packages
+          # cache-dependency-path: frontend/package-lock.json
+      - name: Cache npm packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.npm
+          key: npm-${{ runner.os }}-${{ hashFiles('frontend/package-lock.json') }}
+          restore-keys: npm-${{ runner.os }}-
       - name: install dependencies
         run: npm ci
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-build
+          path: frontend/dist
       - name: run tests with coverage
         run: npm run test:coverage
       - name: Upload coverage
