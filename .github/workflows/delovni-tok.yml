@@ -56,16 +56,11 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements.txt
 
-      - name: Make folder for build artifacts
-        run: |
-          mkdir -p build
-          cp -r . build/
-
       - name: Uplaod build artifacts
         uses: actions/upload-artifact@v4
         with:
           name: backend-build
-          path: build
+          path: backend/build
 
       - name: Run tests with coverage
         run: |
