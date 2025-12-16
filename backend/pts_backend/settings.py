@@ -1,4 +1,5 @@
 import os
+import dj_database_url
 from pathlib import Path
 from datetime import timedelta
 
@@ -41,22 +42,32 @@ TEMPLATES = [
 ]
 
 CORS_ALLOWED_ORIGINS = [os.getenv("FRONTEND_ORIGIN","http://localhost:5173")]
+CORS_ALLOWED_ORIGIN_REGEXES = [
+    r"^https://.*\.vercel\.app$",
+]
 CORS_ALLOW_ALL = os.getenv("CORS_ALLOW_ALL","true").lower() == "true"
 
 ROOT_URLCONF = "pts_backend.urls"
 WSGI_APPLICATION = "pts_backend.wsgi.application"
 
 # --- Baza: lokalni Postgres za vse (auth + tasks) ---
-DATABASES = {
-    "default": {
-        "ENGINE": "django.db.backends.postgresql",
-        "NAME": os.getenv("PG_DB_NAME", "pts_auth"),
-        "USER": os.getenv("PG_USER", "pts_user"),
-        "PASSWORD": os.getenv("PG_PASSWORD", "pts_pass_123"),
-        "HOST": os.getenv("PG_HOST", "postgres"),
-        "PORT": os.getenv("PG_PORT", "5432"),
+DATABASE_URL = os.getenv("DATABASE_URL")
+
+if DATABASE_URL:
+    DATABASES = {
+        "default": dj_database_url.parse(DATABASE_URL, conn_max_age=0)
     }
-}
+else:
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.postgresql",
+            "NAME": os.getenv("PG_DB_NAME", "pts_auth"),
+            "USER": os.getenv("PG_USER", "pts_user"),
+            "PASSWORD": os.getenv("PG_PASSWORD", "pts_pass_123"),
+            "HOST": os.getenv("PG_HOST", "localhost"),
+            "PORT": os.getenv("PG_PORT", "5432"),
+        }
+    }
 
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": ("rest_framework_simplejwt.authentication.JWTAuthentication",),
