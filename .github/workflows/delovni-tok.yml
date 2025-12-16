@@ -159,3 +159,15 @@ jobs:
 
       - name: Deploy backend
         run: curl -X GET ${{ secrets.RENDER_DEPLOY_HOOK }}
+
+  deploy-frontend:
+    name: Deploy frontend on vercel
+    runs-on: ubuntu-latest
+    needs: frontend
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Deploy frontend
+        run: curl -X POST ${{ secrets.MAIN_DEPLOY_HOOK }}
