@@ -228,19 +228,44 @@ jobs:
         with:
           name: sonar-report
           path: .scannerwork/report-task.txt
-
+    
   quality-gate:
     name: Quality Gate
     runs-on: ubuntu-latest
     needs: sonarqube
+    if: github.event_name == 'push' && github.ref == 'refs/heads/production'
     steps:
-      - name: Download SonarQube report
-        uses: actions/download-artifact@v4
-        with:
-          name: sonar-report
-          path: .scannerwork/
+      - name: Install jq
+        run: sudo apt-get update && sudo apt-get install -y jq
 
-      - name: Check quality gate
-        uses: sonarsource/sonarqube-quality-gate-action@master
+      - name: Check quality gate via API
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_PROJECT_KEY: adam8kac_todoapp_rirs
+        run: |
+          status=$(curl -s -u "${SONAR_TOKEN}:" \
+            "https://sonarcloud.io/api/qualitygates/project_status?projectKey=${SONAR_PROJECT_KEY}" \
+            | jq -r '.projectStatus.status')
+
+          echo "Quality Gate status: $status"
+
+          if [ "$status" != "OK" ]; then
+            echo "Quality Gate FAILED → blocking production."
+            exit 1
+          fi
+
+  # quality-gate:
+  #   name: Quality Gate
+  #   runs-on: ubuntu-latest
+  #   needs: sonarqube
+  #   steps:
+  #     - name: Download SonarQube report
+  #       uses: actions/download-artifact@v4
+  #       with:
+  #         name: sonar-report
+  #         path: .scannerwork/
+
+  #     - name: Check quality gate
+  #       uses: sonarsource/sonarqube-quality-gate-action@master
+  #       env:
+  #         SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
