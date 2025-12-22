@@ -10,48 +10,190 @@ jobs:
   backend:
     name: zadnji konec
     runs-on: ubuntu-latest
+
     services:
       postgres:
         image: postgres:16
         env:
-          POSTGRES_DB: $({secrets.PG_DB_NAME})
-          POSTGRES_USER: $({secrets.PG_USER})
-          POSTGRES_PASSWORD: $({secrets.PG_PASSWORD})
+          POSTGRES_DB: ${{ secrets.PG_DB_NAME }}
+          POSTGRES_USER: ${{ secrets.PG_USER }}
+          POSTGRES_PASSWORD: ${{ secrets.PG_PASSWORD }}
         ports:
           - '5432:5432'
-        healthcheck:
-          test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}']
-          interval: 2s
-          timeout: 3s
-          retries: 30
-          start_period: 5s
+        options: >-
+          --health-cmd="pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=30
+          --health-start-period=5s
+    env:
+      POSTGRES_DB: ${{ secrets.PG_DB_NAME }}
+      POSTGRES_USER: ${{ secrets.POSTGRES_USER }}
+      POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
+      PG_HOST: localhost
+      PG_PORT: 5432
+      DJANGO_SECRET_KEY: ${{secrets.DJANGO_SECRET_KEY}}
+      DJANGO_DEBUG: 1
+    defaults:
+      run:
+        working-directory: backend
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+
       - name: Python install
         uses: actions/setup-python@v4
         with:
           python-version: '3.12'
+
+      - name: Cache python packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: pip-${{ runner.os }}-${{ hashFiles('backend/requirements.txt') }}
+          restore-keys: pip-${{ runner.os }}-
+
       - name: Install dependencies
-        run: pip install -r backend/requirements.txt
-      - name: Run tests
-        run: python manage.py test
+        run: pip install -r requirements.txt
+
+      - name: Uplaod build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-build
+          path: backend/build
+
+      - name: Run tests with coverage
+        run: |
+          python -m coverage run manage.py test -v 2
+          mkdir -p coverage
+          python -m coverage xml -o coverage/coverage.xml
+          python -m coverage html -d coverage/html
+
+      - name: Upload coverage
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-coverage
+          path: backend/coverage
+
       - name: Run migrations
         run: python manage.py migrate --noinput
 
   frontend:
     name: spredni konec
     runs-on: ubuntu-latest
+    needs: backend
+    defaults:
+      run:
+        working-directory: frontend
     steps:
       - name: checkout code
         uses: actions/checkout@v4
+
       - name: setup node
         uses: actions/setup-node@v4
         with:
           node-version: '20'
+          # cache: 'npm' # to je isto kot pa step name: Cache npm packages
+          # cache-dependency-path: frontend/package-lock.json
+
+      - name: Cache npm packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.npm
+          key: npm-${{ runner.os }}-${{ hashFiles('frontend/package-lock.json') }}
+          restore-keys: npm-${{ runner.os }}-
+
       - name: install dependencies
         run: npm ci
-      - name: run tests
-        run: npm run test
+
+      - name: run tests with coverage
+        run: npm run test:coverage
+
+      - name: Upload coverage
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-coverage
+          path: frontend/coverage
+
       - name: build
         run: npm run build
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-build
+          path: frontend/dist
+
+  docker-build-development:
+    if: github.ref == 'refs/heads/main'
+    name: Build docker latest-develompment image and push to docker hub
+    runs-on: ubuntu-latest
+    needs: backend
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Login to docker hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_TOKEN }}
+
+      - name: Build and push backend image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: Dockerfile.backend
+          tags: ${{ secrets.DOCKER_USERNAME }}/rirs-backend:dev
+          platforms: linux/amd64
+          push: true
+
+  docker-build-production:
+    if: github.ref == 'refs/heads/production'
+    name: Build docker production image and push to docker hub
+    runs-on: ubuntu-latest
+    needs: backend
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Login to docker hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_TOKEN }}
+
+      - name: Build and push backend image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: Dockerfile.backend
+          tags: ${{ secrets.DOCKER_USERNAME }}/rirs-backend:prod
+          platforms: linux/amd64
+          push: true
+
+  deploy-backend:
+    name: Deploy backend on Render
+    runs-on: ubuntu-latest
+    needs: docker-build-development
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Deploy backend
+        run: curl -X GET ${{ secrets.RENDER_DEPLOY_HOOK }}
+
+  deploy-frontend:
+    name: Deploy frontend on vercel
+    runs-on: ubuntu-latest
+    needs: frontend
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Deploy frontend
+        run: curl -X POST ${{ secrets.MAIN_DEPLOY_HOOK }}
