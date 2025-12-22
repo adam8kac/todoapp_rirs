@@ -198,23 +198,15 @@ jobs:
       - name: Deploy frontend
         run: curl -X POST ${{ secrets.MAIN_DEPLOY_HOOK }}
 
-  sonarqube:
-    name: Build
-    on:
-      push:
-        branches:
-          - main
-      pull_request:
-        types: [opened, synchronize, reopened]
-    jobs:
-      sonarqube:
-        name: SonarQube
-        runs-on: ubuntu-latest
-        steps:
-          - uses: actions/checkout@v4
-            with:
-              fetch-depth: 0
-          - name: SonarQube Scan
-            uses: SonarSource/sonarqube-scan-action@v6
-            env:
-              SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+  
+    sonarqube:
+      name: SonarQube
+      runs-on: ubuntu-latest
+      steps:
+        - name: Checkout code
+          uses: actions/checkout@v4
+
+        - name: SonarQube Scan
+          uses: SonarSource/sonarqube-scan-action@v6
+          env:
+            SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
