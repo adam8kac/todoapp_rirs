@@ -1,0 +1,29 @@
+name: Github Pages
+
+on:
+  push:
+    branches: [main, production, pre-production]
+  pull_request:
+    branches: [main, production, pre-production]
+
+jobs:
+  pages-deploy:
+    name: Deploy site
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup pages
+        uses: actions/configure-pages@v5
+
+      - name: Uplaod artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: site
+          path: ./site/
+
+      - name: Deploy
+        uses: actions/deploy-pages@v5
