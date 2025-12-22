@@ -238,7 +238,7 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: sonar-report
-          path: .scannerwork/report-task.txt
+          path: .scannerwork/
 
       - name: Check quality gate
         uses: sonarsource/sonarqube-quality-gate-action@master
