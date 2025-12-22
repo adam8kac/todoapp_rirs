@@ -3,8 +3,8 @@ name: Delovni tok
 on:
   push:
     branches: [main, production, pre-production]
-  pull_request:
-    branches: [main, production, pre-production]
+  # pull_request:
+  #   branches: [main, production, pre-production]
 
 jobs:
   backend:
@@ -128,7 +128,7 @@ jobs:
     if: github.ref == 'refs/heads/main'
     name: Build docker latest-develompment image and push to docker hub
     runs-on: ubuntu-latest
-    needs: backend
+    needs: quality-gate
 
     steps:
       - name: Checkout code
@@ -153,7 +153,7 @@ jobs:
     if: github.ref == 'refs/heads/production'
     name: Build docker production image and push to docker hub
     runs-on: ubuntu-latest
-    needs: backend
+    needs: quality-gate
 
     steps:
       - name: Checkout code
@@ -177,7 +177,7 @@ jobs:
   deploy-backend:
     name: Deploy backend on Render
     runs-on: ubuntu-latest
-    needs: docker-build-development
+    needs: docker-build-production
 
     steps:
       - name: Checkout code
@@ -189,7 +189,7 @@ jobs:
   deploy-frontend:
     name: Deploy frontend on vercel
     runs-on: ubuntu-latest
-    needs: frontend
+    needs: quality-gate
 
     steps:
       - name: Checkout code
@@ -197,3 +197,75 @@ jobs:
 
       - name: Deploy frontend
         run: curl -X POST ${{ secrets.MAIN_DEPLOY_HOOK }}
+
+  sonarqube:
+    name: SonarQube
+    runs-on: ubuntu-latest
+    needs: [backend, frontend]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download backend coverage
+        uses: actions/download-artifact@v4
+        with:
+          name: backend-coverage
+          path: backend/coverage
+
+      - name: Download frontend coverage
+        uses: actions/download-artifact@v4
+        with:
+          name: frontend-coverage
+          path: frontend/coverage
+
+      - name: SonarQube Scan
+        uses: SonarSource/sonarqube-scan-action@v6
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+
+      - name: Upload SonarQube report
+        uses: actions/upload-artifact@v4
+        with:
+          name: sonar-report
+          path: .scannerwork/report-task.txt
+
+  quality-gate:
+    name: Quality Gate
+    runs-on: ubuntu-latest
+    needs: sonarqube
+    if: github.event_name == 'push' && github.ref == 'refs/heads/production'
+    steps:
+      - name: Install jq
+        run: sudo apt-get update && sudo apt-get install -y jq
+
+      - name: Check quality gate via API
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_PROJECT_KEY: adam8kac_todoapp_rirs
+        run: |
+          status=$(curl -s -u "${SONAR_TOKEN}:" \
+            "https://sonarcloud.io/api/qualitygates/project_status?projectKey=${SONAR_PROJECT_KEY}" \
+            | jq -r '.projectStatus.status')
+
+          echo "Quality Gate status: $status"
+
+          if [ "$status" != "OK" ]; then
+            echo "Quality Gate FAILED → blocking production."
+            exit 1
+          fi
+
+  # quality-gate:
+  #   name: Quality Gate
+  #   runs-on: ubuntu-latest
+  #   needs: sonarqube
+  #   steps:
+  #     - name: Download SonarQube report
+  #       uses: actions/download-artifact@v4
+  #       with:
+  #         name: sonar-report
+  #         path: .scannerwork/
+
+  #     - name: Check quality gate
+  #       uses: sonarsource/sonarqube-quality-gate-action@master
+  #       env:
+  #         SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
