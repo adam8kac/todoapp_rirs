@@ -148,7 +148,7 @@ jobs:
           tags: ${{ secrets.DOCKER_USERNAME }}/rirs-backend:dev
           platforms: linux/amd64
           push: true
-    
+
   docker-build-production:
     if: github.ref == 'refs/heads/production'
     name: Build docker production image and push to docker hub
@@ -177,7 +177,7 @@ jobs:
   deploy-backend:
     name: Deploy backend on Render
     runs-on: ubuntu-latest
-    needs: docker-build
+    needs: docker-build-development
 
     steps:
       - name: Checkout code
