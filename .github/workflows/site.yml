@@ -6,6 +6,11 @@ on:
   pull_request:
     branches: [main, production, pre-production]
 
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
 jobs:
   pages-deploy:
     name: Deploy site
